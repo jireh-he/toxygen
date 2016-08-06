@@ -39,6 +39,7 @@ class Profile(basecontact.BaseContact, Singleton):
         self._tox = tox
         self._file_transfers = {}  # dict of file transfers. key - tuple (friend_number, file_number)
         self._call = calls.AV(tox.AV)  # object with data about calls
+        self._call_widgets = {}  # dict of incoming call widgets
         self._incoming_calls = set()
         self._load_history = True
         self._factory = items_factory.ItemsFactory(self._screen.friends_list, self._messages)
@@ -1189,10 +1190,9 @@ class Profile(basecontact.BaseContact, Singleton):
             self._messages.scrollToBottom()
         else:
             friend.actions = True
-        # TODO: dict of widgets
-        self._call_widget = avwidgets.IncomingCallWidget(friend_number, text, friend.name)
-        self._call_widget.set_pixmap(friend.get_pixmap())
-        self._call_widget.show()
+        self._call_widgets[friend_number] = avwidgets.IncomingCallWidget(friend_number, text, friend.name)
+        self._call_widgets[friend_number].set_pixmap(friend.get_pixmap())
+        self._call_widgets[friend_number].show()
 
     def accept_call(self, friend_number, audio, video):
         """
@@ -1201,8 +1201,7 @@ class Profile(basecontact.BaseContact, Singleton):
         self._call.accept_call(friend_number, audio, video)
         self._screen.active_call()
         self._incoming_calls.remove(friend_number)
-        if hasattr(self, '_call_widget'):
-            del self._call_widget
+        del self._call_widgets[friend_number]
 
     def stop_call(self, friend_number, by_friend):
         """
@@ -1216,8 +1215,8 @@ class Profile(basecontact.BaseContact, Singleton):
         self._screen.call_finished()
         self._call.finish_call(friend_number, by_friend)  # finish or decline call
         if hasattr(self, '_call_widget'):
-            self._call_widget.close()
-            del self._call_widget
+            self._call_widget[friend_number].close()
+            del self._call_widget[friend_number]
         friend = self.get_friend_by_number(friend_number)
         friend.append_message(InfoMessage(text, time.time()))
         if friend_number == self.get_active_number():
